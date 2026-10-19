@@ -63,7 +63,7 @@ class Editor implements ImageEditor {
     private refreshFilmstrip(): void {
         this.filmstrip.replaceChildren();
         this.items.forEach((item, i) => {
-            const changed = JSON.stringify(item.spec) !== this.baseline[i];
+            const changed = JSON.stringify(appliedSpec(item.spec)) !== this.baseline[i];
             const control = button(`${i + 1}. ${item.original.name}${changed ? ' · ' + this.t('updated') : ''}`, () => {void this.activate(item.id).catch(error => this.error(error));});
             control.dataset.imageId = item.id; control.setAttribute('aria-pressed', String(item.id === this.active)); control.disabled = this.working;
             const url = this.thumbnails.get(item.id);
@@ -135,7 +135,11 @@ class Editor implements ImageEditor {
             const result = await detect.call(this.options.processor, source, {signal, limits: this.options.limits});
             if (generation !== this.generation || signal.aborted) return;
             if (JSON.stringify(this.items[index].spec) !== baseline) {this.status.textContent = this.t('manual'); return;}
-            if (result.status === 'not-found') {this.status.textContent = this.t('notDetected'); return;}
+            if (result.status !== 'detected') {
+                const key = result.status === 'partial' ? 'partial' : result.status === 'not-found' ? 'notDetected'
+                    : result.reason === 'budget-exceeded' ? 'budgetExceeded' : result.reason === 'ambiguous' ? 'ambiguous' : 'uncertain';
+                this.status.textContent = this.t(key); return;
+            }
             this.items[index] = {...item, spec: withSelection(item.spec, result.spec.selection)}; this.options.onChange?.();
             const mounting = this.activate(item.id), mountedGeneration = this.generation; await mounting;
             if (this.active === item.id && this.generation === mountedGeneration) {
@@ -189,7 +193,7 @@ class Editor implements ImageEditor {
         try {
             check(signal); check(this.lifetime.signal);
             for (const [i, item] of captured.entries()) {
-                if (JSON.stringify(item.spec) === this.baseline[i] && JSON.stringify(resize) === this.initialResize) continue;
+                if (JSON.stringify(appliedSpec(item.spec)) === this.baseline[i] && JSON.stringify(resize) === this.initialResize) continue;
                 const result = await this.options.processor.process(item.original, item.spec, {signal: combined.signal, resize, purpose: 'export', limits: this.options.limits});
                 check(signal); check(this.lifetime.signal); output.push({itemId: item.id, expectedRevision: item.revision, spec: appliedSpec(item.spec), output: result});
             }

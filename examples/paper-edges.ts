@@ -10,12 +10,13 @@ function detect(image: CanvasImageSource, width: number, height: number) {
 async function photo(url: string) {
     const image = new Image(); image.src = url; await image.decode();
     const result = detect(image, image.naturalWidth, image.naturalHeight);
-    if (result) {
+    if (result && result.status !== 'uncertain') {
+        const points = result.status === 'complete' ? result.corners : result.outline;
         ctx.strokeStyle = '#14e08c'; ctx.lineWidth = 4; ctx.beginPath();
-        result.corners.forEach((p, i) => {if (i) ctx.lineTo(p.x * canvas.width, p.y * canvas.height); else ctx.moveTo(p.x * canvas.width, p.y * canvas.height);});
+        points.forEach((p, i) => {if (i) ctx.lineTo(p.x * canvas.width, p.y * canvas.height); else ctx.moveTo(p.x * canvas.width, p.y * canvas.height);});
         ctx.closePath(); ctx.stroke();
     }
-    document.querySelector('[role=status]')!.textContent = !result ? '未找到可用边界' : result.status === 'partial' ? '检测到纸边，部分角点超出画面；不能恢复画面外内容' : '找到完整四边形，请核对边界';
+    document.querySelector('[role=status]')!.textContent = !result ? '未找到可用边界' : result.status === 'uncertain' ? '检测结果不确定，请手动调整' : result.status === 'partial' ? '检测到纸边，部分角点超出画面；不能恢复画面外内容' : '找到完整四边形，请核对边界';
     return {result, overlay: canvas.toDataURL('image/jpeg', 0.9)};
 }
 function synthetic(partial: boolean) {
@@ -30,7 +31,7 @@ function synthetic(partial: boolean) {
 async function checks(url?: string | null) {
     if (url) return photo(url);
     const full = synthetic(false), partial = synthetic(true);
-    assert(full?.status === 'complete', 'Synthetic full page has complete corners');
+    if (full?.status !== 'complete') throw new Error('Synthetic full page has complete corners');
     assert(Math.abs(full!.corners[0].x - 1 / 6) < 0.03 && Math.abs(full!.corners[0].y - 0.1) < 0.03, 'Outer page edges outrank text');
     assert(partial?.status === 'partial', 'Out-of-frame corners are reported rather than clamped');
     const blank = new Uint8ClampedArray(600 * 800 * 4); blank.fill(255);

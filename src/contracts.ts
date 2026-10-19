@@ -20,7 +20,11 @@ export interface ImageLimits {readonly maxInputBytes: number; readonly maxDecode
 export interface InspectOptions {readonly signal: AbortSignal; readonly limits?: Partial<ImageLimits>}
 export interface ProcessOptions extends InspectOptions {readonly resize?: ImageResizePolicy; readonly purpose?: 'preview' | 'export'}
 export type ImageDetection = {readonly status: 'detected'; readonly spec: ImageSpec; readonly confidence?: number}
-    | {readonly status: 'not-found'};
+    | {readonly status: 'not-found'}
+    /** Visible outline is diagnostic only; partial detection never supplies a crop spec. */
+    | {readonly status: 'partial'; readonly outline: readonly Point[]}
+    | {readonly status: 'uncertain'; readonly reason: 'ambiguous' | 'low-evidence' | 'budget-exceeded'};
+export interface ImageProcessorOptions {readonly detector?: 'classical' | 'paper'}
 export interface ImageProcessor {readonly id: 'image-parser'; readonly version: string; readonly defaults: ImageProcessingPolicy;
     detect?(source: ImageSource, options: InspectOptions): Promise<ImageDetection>;
     inspect(source: ImageSource, options: InspectOptions): Promise<ImageInfo>;

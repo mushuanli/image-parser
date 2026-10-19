@@ -2,9 +2,14 @@ import type {ImageSpec, ImageSelection, Point, Quad} from './contracts.js';
 import {extent, pixels} from './geometry.js';
 import {ImageProcessingError, validateSpec} from './validation.js';
 
+function identity(selection: ImageSelection): boolean {
+    if (selection.kind === 'none') return true;
+    if (selection.kind === 'rect') return selection.x === 0 && selection.y === 0 && selection.width === 1 && selection.height === 1;
+    return selection.points.every((p, i) => p.x === [0, 1, 1, 0][i] && p.y === [0, 0, 1, 1][i]);
+}
 export function appliedSpec(spec: ImageSpec): ImageSpec {
-    const steps = [...(spec.version === 2 ? spec.steps : [])];
-    if (spec.selection.kind !== 'none') steps.push(spec.selection);
+    const steps = [...(spec.version === 2 ? spec.steps : [])].filter(step => !identity(step));
+    if (!identity(spec.selection)) steps.push(spec.selection);
     return steps.length ? validateSpec({version: 2, steps, selection: {kind: 'none'}}) : {version: 1, selection: {kind: 'none'}};
 }
 export function workingSpec(spec: ImageSpec): ImageSpec {
@@ -29,7 +34,7 @@ function project(q: Quad): (point: Point) => Point {
 /** Compose geometry first, then sample the immutable original once. No intermediate JPEGs. */
 export function recipeGeometry(spec: ImageSpec, width: number, height: number) {
     let points = pixels({kind: 'none'}, width, height), size = {width, height}, perspective = false;
-    const steps = [...(spec.version === 2 ? spec.steps : []), spec.selection].filter(step => step.kind !== 'none');
+    const steps = [...(spec.version === 2 ? spec.steps : []), spec.selection].filter(step => !identity(step));
     for (const step of steps) {
         const map = project(points);
         points = pixels(step, 1, 1).map(map) as unknown as Quad;

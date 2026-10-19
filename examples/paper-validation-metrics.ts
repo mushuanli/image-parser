@@ -32,7 +32,7 @@ export interface Measured {expected: 'complete' | 'partial' | 'abstain'; status:
 export function assess(record: Measured) {
     const precise = !!record.metrics && record.metrics.iou >= 0.9 && record.metrics.recall >= 0.97 && record.metrics.maxCornerError <= 0.03;
     const passed = record.expected === 'complete' ? record.status === 'complete' && precise
-        : record.expected === 'partial' ? record.status === 'partial' : record.status === 'not-found';
+        : record.expected === 'partial' ? record.status === 'partial' : ['not-found', 'uncertain'].includes(record.status);
     const unsafeComplete = record.status === 'complete' && (record.expected !== 'complete' || !!record.metrics && record.metrics.recall < 0.97);
     return {passed, unsafeComplete};
 }

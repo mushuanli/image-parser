@@ -33,9 +33,10 @@ function measure(test: ValidationCase): RecordResult {
     let detected: ReturnType<typeof detectPaperBoundary> = null; const started = performance.now();
     try {detected = detectPaperBoundary(pixels.data, plane.width, plane.height);} catch (failure) {error = String(failure);}
     const milliseconds = performance.now() - started, status = error ? 'error' : detected?.status ?? 'not-found';
-    const metrics = detected && test.points ? geometryMetrics(detected.corners, test.points, source.width, source.height) : undefined;
+    const corners = detected?.status === 'complete' ? detected.corners : null;
+    const metrics = corners && test.points ? geometryMetrics(corners, test.points, source.width, source.height) : undefined;
     const result = {id: test.id, category: test.category, expected: test.expected, status, error, metrics, milliseconds,
-        points: detected?.corners ?? null, ...assess({expected: test.expected, status, metrics}), specAccepted: specAccepts(detected?.corners ?? null)};
+        points: corners ?? (detected?.status === 'partial' ? detected.outline : null), ...assess({expected: test.expected, status, metrics}), specAccepted: specAccepts(corners)};
     plane.width = plane.height = 0; capture(test, result); return result;
 }
 async function realCase(item: RealImage): Promise<ValidationCase> {

@@ -117,4 +117,13 @@ async function checks() {
     corners.destroy(); URL.revokeObjectURL(cornerImage.src); passed.push('CSS independent corner coordinates');
     await processor.dispose(); return passed;
 }
-Object.assign(window, {runImageChecks: checks});
+Object.assign(window, {runImageChecks: async (url?: string | null) => {
+    const passed = await checks(); if (!url) return passed;
+    const processor = createImageProcessor(), signal = new AbortController().signal;
+    try {
+        const source = createBlobSource(await (await fetch(url)).blob(), {id: 'user', revision: '1', name: 'user.jpg'});
+        const result = await processor.detect!(source, {signal});
+        assert(result.status === 'uncertain', 'Weak classical photo result must not become an automatic crop');
+        return [...passed, 'default detector low-confidence photo guard'];
+    } finally {await processor.dispose();}
+}});

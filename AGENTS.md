@@ -8,3 +8,5 @@
 验证：pnpm --filter @itookit/image-parser typecheck / test / build。真实像素、打包安装与浏览器验收另见 README。
 
 自动扫描使用 Scanic classical 检测，限制处理平面且不隐式下载 ML 资源；识别失败保留手动四角，迟到结果不能覆盖手动修改或其他图片。prepare 等待自动检测并支持取消等待。宿主的应用按钮调用 apply 更新当前画布并继续编辑；完成调用 prepare 后持久保存全部结果，成功后替换附件并关闭。取消丢弃整个工作副本，恢复原图清除全部步骤。classical 检测对齐 Scanic demo 的默认 800 内部处理上限，不先缩成发送尺寸。四角编辑使用像素尺寸固定的 Canvas，避免 image.width 与 naturalWidth 混用。
+
+非 ML paper 检测器通过 createImageProcessor({detector: 'paper'}) 显式选择；应用默认仍为 classical，未通过真机与独立样本验收前不更换默认。paper 将候选限制到最长边 480，连通区域与长边提案联合核验，协作式分段计算支持取消、实例销毁和超时；不是 Worker，也不承诺中断解码/Canvas。partial 只有可见候选轮廓，uncertain 只有原因，两者不能构造自动裁剪配方。UI 保留手动选区，完整全图选区视为恒等操作，不重编码。test:detector 独立核验数值、公共调用链、数据集和浏览器要求；报告不得把 Chromium 节流当作 Safari 真机。

@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import {createBlobSource, createImageProcessor, DEFAULT_IMAGE_SPEC, fitDimensions, resolveResize, validateSpec} from '../src/index';
 import {imageHeader} from '../src/headers';
 import {createVfsImageSource} from '../src/vfs';
@@ -61,4 +61,23 @@ describe('bounded inputs and borrowed resources', () => {
         expect(imageHeader(bytes.buffer)).toMatchObject({mimeType: 'image/webp', animated: true, width: 1, height: 1});
         expect(() => imageHeader(new TextEncoder().encode('<svg/>').buffer)).toThrow('unsupported-format');
     });
+});
+
+it('closes a decoded bitmap when candidate detection fails or its processor is disposed', async () => {
+    const bytes = new Uint8Array(24); bytes.set([137, 80, 78, 71, 13, 10, 26, 10]);
+    const view = new DataView(bytes.buffer); view.setUint32(16, 100); view.setUint32(20, 100);
+    const source = createBlobSource(new Blob([bytes]), {id: 'paper', revision: '1', name: 'paper.png'}), close = vi.fn();
+    const bitmap = {width: 100, height: 100, close};
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => bitmap));
+    const context = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    const processor = createImageProcessor({detector: 'paper'});
+    try {
+        await expect(processor.detect!(source, {signal: new AbortController().signal})).rejects.toThrow('decode-failed');
+        expect(close).toHaveBeenCalledOnce(); close.mockClear();
+        let decoded!: () => void; const ready = new Promise<void>(resolve => {decoded = resolve;});
+        vi.stubGlobal('createImageBitmap', vi.fn(async () => {decoded(); return bitmap;}));
+        const pending = processor.detect!(source, {signal: new AbortController().signal});
+        await ready; await processor.dispose(); await expect(pending).rejects.toThrow('disposed');
+        expect(close).toHaveBeenCalledOnce();
+    } finally {await processor.dispose(); context.mockRestore(); vi.unstubAllGlobals();}
 });

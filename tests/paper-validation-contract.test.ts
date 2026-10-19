@@ -7,8 +7,8 @@ it('rejects out-of-frame estimates in the existing production crop contract', ()
     expect(() => validateSpec({version: 1, selection: {kind: 'quad', points}})).toThrow('invalid-selection');
 });
 it('distinguishes a valid skinny image from the experimental detector plane limits', () => {
-    // Production must adapt this unsupported shape to abstention instead of leaking a raw RangeError.
-    expect(() => detectPaperBoundary(new Uint8ClampedArray(4 * 800 * 4), 4, 800)).toThrow(RangeError);
+    expect(detectPaperBoundary(new Uint8ClampedArray(4 * 800 * 4), 4, 800)).toBeNull();
+    expect(() => detectPaperBoundary(new Uint8ClampedArray(4), 800, 800)).toThrow(RangeError);
 });
 it('does not credit an empty visible target, and matches cyclic corner order without penalizing a rotation', () => {
     const square = [{x: 0, y: 0}, {x: 1, y: 0}, {x: 1, y: 1}, {x: 0, y: 1}];

@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {once} from 'node:events';
 const root = process.env.IMAGE_PARSER_BROWSER_ROOT ?? new URL('..', import.meta.url).pathname;
 const fixture = process.env.IMAGE_PARSER_BROWSER_FIXTURE ?? 'examples/browser.html';
-const server = await createServer({root, configFile: false, optimizeDeps: {entries: [fixture]}, server: {host: '127.0.0.1', port: 0}});
+const server = await createServer({root, configFile: false, optimizeDeps: {entries: [fixture]}, server: {host: '127.0.0.1', port: 0, hmr: false, watch: null}});
 await server.listen();
 const profile = await mkdtemp(join(tmpdir(), 'image-parser-browser-'));
 const chrome = spawn(process.env.IMAGE_PARSER_BROWSER ?? '/usr/bin/google-chrome', ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage',

@@ -1,5 +1,5 @@
 import {detectDocument} from './detection.js';
-import type {ImageProcessor, ImageSource, ImageSpec, ImageLimits, InspectOptions, ProcessOptions, ImageOutput} from './contracts.js';
+import type {ImageProcessor, ImageSource, ImageSpec, ImageLimits, InspectOptions, ProcessOptions, ImageOutput, ImageProcessorOptions} from './contracts.js';
 import {DEFAULT_IMAGE_LIMITS, DEFAULT_IMAGE_POLICY, fitDimensions, validateResize} from './policy.js';
 import {check, ImageProcessingError, validateSpec} from './validation.js';
 import {readBlob} from './source.js';
@@ -50,13 +50,15 @@ async function processImage(source: ImageSource, spec: ImageSpec, options: Proce
             changed: !unchanged, purpose: options.purpose ?? 'export'};
     } finally {image.close(); if (out) out.width = out.height = 0;}
 }
-export function createImageProcessor(): ImageProcessor {
+export function createImageProcessor(options: ImageProcessorOptions = {}): ImageProcessor {
+    const detector = options.detector ?? 'classical';
+    if (!['classical', 'paper'].includes(detector)) throw new ImageProcessingError('invalid-policy');
     let closed = false, queue: Promise<void> = Promise.resolve();
     const assertOpen = () => {if (closed) throw new ImageProcessingError('disposed');};
     const schedule = <T>(job: () => Promise<T>): Promise<T> => {
         const result = queue.then(job); queue = result.then(() => {}, () => {}); return result;
     };
-    return {id: 'image-parser', version: '0.1.0', defaults: DEFAULT_IMAGE_POLICY,
+    return {id: 'image-parser', version: '0.2.0', defaults: DEFAULT_IMAGE_POLICY,
         async process(source, input, options) {
             assertOpen(); const spec = validateSpec(input), captured = {...options, limits: options.limits ? {...options.limits} : undefined,
                 resize: validateResize(options.resize ?? DEFAULT_IMAGE_POLICY.resize)};
@@ -67,7 +69,7 @@ export function createImageProcessor(): ImageProcessor {
             const captured = {...options, limits: options.limits ? {...options.limits} : undefined};
             return schedule(async () => {
                 assertOpen(); const {image, budget} = await load(source, captured);
-                try {const result = await detectDocument(image, budget, captured.signal); assertOpen(); check(captured.signal); return result;}
+                try {const result = await detectDocument(image, budget, captured.signal, detector, assertOpen); assertOpen(); check(captured.signal); return result;}
                 finally {image.close();}
             });
         },

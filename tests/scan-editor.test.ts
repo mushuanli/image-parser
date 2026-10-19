@@ -61,3 +61,25 @@ it('applies only to the working image and leaves the previous state intact after
     expect(prepared[0].spec.version === 2 && prepared[0].spec.steps).toEqual([quad.selection, before[0].spec.selection]);
     expect(editor.getItems()[1].spec).toEqual(DEFAULT_IMAGE_SPEC); await editor.destroy();
 });
+it.each(['partial', 'uncertain'] as const)('retains selection and avoids exporting an automatic %s crop', async status => {
+    const {host, editor, finish} = await fixture(), before = editor.getItems()[0].spec;
+    finish(status === 'partial' ? {status, outline: [{x: 0, y: 0.1}, {x: 0.9, y: 0.1}, {x: 1, y: 1}]}
+        : {status, reason: 'ambiguous'});
+    await vi.waitFor(() => expect(host.textContent).toContain('已保留当前选区'));
+    expect(editor.getItems()[0].spec).toEqual(before);
+    expect(await editor.prepare({signal: new AbortController().signal})).toEqual([]);
+    const update = vi.mocked(mountCornerEditor).mock.calls.at(-1)![4]; update(quad);
+    await editor.apply({signal: new AbortController().signal});
+    expect(editor.getItems()[0].spec).toEqual({version: 2, steps: [quad.selection], selection: {kind: 'none'}});
+    await editor.destroy();
+});
+it('finishes releasing owned resources when the corner editor disposer throws', async () => {
+    const {editor, processor, finish} = await fixture(); finish({status: 'not-found'});
+    await Promise.resolve(); await Promise.resolve();
+    const corner = await vi.mocked(mountCornerEditor).mock.results.at(-1)!.value;
+    corner.destroy = () => {throw new Error('renderer-cleanup-failed');};
+    const signal = vi.mocked(mountCornerEditor).mock.calls.at(-1)![3];
+    await expect(editor.destroy()).rejects.toThrow('Image editor cleanup failed');
+    expect(signal.aborted).toBe(true); expect(URL.revokeObjectURL).toHaveBeenCalled();
+    expect(processor.dispose).toBeUndefined();
+});
