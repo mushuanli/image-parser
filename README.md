@@ -60,3 +60,23 @@ Abort signals suppress late results; Scanic's synchronous work cannot be interru
 The package publishes ESM/CJS and declarations with root, `/ui`, `/vfs` and `/style.css` entries. Scanic requires Node >=22 for package tooling; image operations require browser image/Canvas APIs. npm and source-workspace consumption use the same public contracts.
 
 Validation: `pnpm typecheck`, `pnpm test`, `pnpm build`. Real image/browser checks and integration status are recorded in the repository design document. Desktop automated checks do not establish iOS Safari compatibility.
+
+## Experimental non-ML paper edges
+
+`examples/paper-edges.html` compares a bounded, pure TypeScript line detector against centered light-paper scenes. It uses gradient-directed Hough voting and signed brightness contrast across candidate edges, then intersects four lines. It does not load Scanic's ML backend or any model. Out-of-frame intersections are reported as `partial` and retained for inspection; they are not clamped into a crop. This is an experimental example, excluded from package exports and the production automatic-scan path. It assumes a mostly centered, light document and does not establish accuracy for arbitrary backgrounds, dark documents or curved pages.
+
+Run its synthetic checks with:
+
+```sh
+IMAGE_PARSER_BROWSER_FIXTURE=examples/paper-edges.html pnpm test:browser
+```
+
+The browser harness optionally passes `IMAGE_PARSER_INPUT_URL` to the fixture and saves its structured result, including any preview data, to `IMAGE_PARSER_RESULT_FILE`. A photo URL must be served by the local test server. The interactive example accepts a local file without uploading it.
+
+### Production admission audit
+
+`pnpm test:detector` runs a separate acceptance matrix for the experimental detector, saves JSON results and exits nonzero when admission fails. It does not replace production scanning. The current frozen prototype fails this audit; the ordinary unit test suite passing does not mean this detector is production-ready. Synthetic cases include positions, rotations, scale, contrast, noise, clutter, partial pages and negative images. Geometry uses visible polygon IoU, paper recall and cyclic corner error rather than bounding-box size.
+
+The optional manifest supplied through `IMAGE_PARSER_INPUT_URL` adds local photo fixtures. It contains `images[]` entries with id, served URL, decoded width/height, normalized clockwise points and expected complete/partial/abstain. The upstream sample downloader is explicitly invoked with `node scripts/fetch-paper-validation-dataset.mjs <directory> <served-path>`; it pins the upstream commit and ground-truth hash. It does not run during installation or normal tests. Upstream labels are ML-assisted and marked reviewed, not independently relabeled by this project; inference in this audit uses no ML.
+
+Use `IMAGE_PARSER_CPU_RATE=4 IMAGE_PARSER_MOBILE=1` for a Chromium stress run. That emulates CPU and viewport constraints and does not establish Safari or phone-device compatibility. The report distinguishes the numerical measurement gate from unverified production-adapter and browser acceptance.

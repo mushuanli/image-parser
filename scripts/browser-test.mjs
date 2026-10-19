@@ -1,6 +1,6 @@
 import {createServer} from 'vite';
 import {spawn} from 'node:child_process';
-import {mkdtemp, readFile, rm} from 'node:fs/promises';
+import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {once} from 'node:events';
@@ -44,11 +44,12 @@ try {
         if (i === 99) {console.error(await call('Runtime.evaluate', {expression: 'document.body.innerText.slice(0,1000)', returnByValue: true})); throw new Error('Browser fixture failed to load');}
         await new Promise(resolve => setTimeout(resolve, 100));
     }
-    const result = await call('Runtime.evaluate', {expression: 'window.runImageChecks()', awaitPromise: true, returnByValue: true});
+    const result = await call('Runtime.evaluate', {expression: `window.runImageChecks(${JSON.stringify(process.env.IMAGE_PARSER_INPUT_URL ?? null)})`, awaitPromise: true, returnByValue: true});
     if (result.exceptionDetails) {
         console.error(await call('Runtime.evaluate', {expression: 'document.body.innerText.slice(-1800)', returnByValue: true}));
         throw new Error(JSON.stringify(result.exceptionDetails));
     }
+    if (process.env.IMAGE_PARSER_RESULT_FILE) await writeFile(process.env.IMAGE_PARSER_RESULT_FILE, JSON.stringify(result.result.value, null, 2));
     const summary = JSON.parse(JSON.stringify(result.result.value, (_key, value) => typeof value === 'string' && value.startsWith('data:image/') ? '[image data omitted]' : value));
     console.log('Browser pixel and interaction checks passed:', process.env.IMAGE_PARSER_SUMMARY_ONLY ? {...summary, records: undefined, failureSheet: undefined} : summary);
 } finally {
