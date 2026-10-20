@@ -18,7 +18,7 @@ export interface ImageOutput {readonly sourceId: string; readonly sourceRevision
 export interface ImageLimits {readonly maxInputBytes: number; readonly maxDecodedPixels: number;
     readonly maxOutputPixels: number; readonly maxCanvasEdge: number}
 export interface InspectOptions {readonly signal: AbortSignal; readonly limits?: Partial<ImageLimits>}
-export interface ProcessOptions extends InspectOptions {readonly resize?: ImageResizePolicy; readonly purpose?: 'preview' | 'export'}
+export interface ProcessOptions extends InspectOptions {readonly recipe?: import('./processing.js').ImageRecipe; readonly resize?: ImageResizePolicy; readonly purpose?: 'preview' | 'export'}
 export type ImageDetection = {readonly status: 'detected'; readonly spec: ImageSpec; readonly confidence?: number}
     | {readonly status: 'not-found'}
     /** Visible outline is diagnostic only; partial detection never supplies a crop spec. */

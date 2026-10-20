@@ -1,3 +1,5 @@
+import {validateImageRecipe, IMAGE_PROCESSOR_VERSION} from './processing.js';
+import {encodeRecipe} from './color-output.js';
 import {detectDocument} from './detection.js';
 import type {ImageProcessor, ImageSource, ImageSpec, ImageLimits, InspectOptions, ProcessOptions, ImageOutput, ImageProcessorOptions} from './contracts.js';
 import {DEFAULT_IMAGE_LIMITS, DEFAULT_IMAGE_POLICY, fitDimensions, validateResize} from './policy.js';
@@ -40,13 +42,13 @@ async function processImage(source: ImageSource, spec: ImageSpec, options: Proce
     try {
         assertOpen(); check(options.signal);
         const size = fitDimensions(image.width, image.height, options.resize ?? DEFAULT_IMAGE_POLICY.resize);
-        const unchanged = !recipeGeometry(spec, image.width, image.height).changed && size.width === image.width && size.height === image.height && options.purpose !== 'preview';
+        const unchanged = !recipeGeometry(spec, image.width, image.height).changed && size.width === image.width && size.height === image.height && options.purpose !== 'preview' && !options.recipe;
         if (unchanged) checkSize(size.width, size.height, budget);
         out = unchanged ? undefined : await render(image, spec, options, budget);
-        const result = out ? await encode(out, header.mimeType, options.signal) : blob;
+        const result = out ? options.recipe ? await encodeRecipe(out, options.recipe, options.signal) : await encode(out, header.mimeType, options.signal) : blob;
         assertOpen(); check(options.signal);
         return {sourceId: source.id, sourceRevision: source.revision, blob: result, width: out?.width ?? image.width,
-            height: out?.height ?? image.height, mimeType: header.mimeType, byteLength: result.size,
+            height: out?.height ?? image.height, mimeType: out ? result.type : header.mimeType, byteLength: result.size,
             changed: !unchanged, purpose: options.purpose ?? 'export'};
     } finally {image.close(); if (out) out.width = out.height = 0;}
 }
@@ -58,10 +60,11 @@ export function createImageProcessor(options: ImageProcessorOptions = {}): Image
     const schedule = <T>(job: () => Promise<T>): Promise<T> => {
         const result = queue.then(job); queue = result.then(() => {}, () => {}); return result;
     };
-    return {id: 'image-parser', version: '0.2.0', defaults: DEFAULT_IMAGE_POLICY,
+    return {id: 'image-parser', version: IMAGE_PROCESSOR_VERSION, defaults: DEFAULT_IMAGE_POLICY,
         async process(source, input, options) {
             assertOpen(); const spec = validateSpec(input), captured = {...options, limits: options.limits ? {...options.limits} : undefined,
-                resize: validateResize(options.resize ?? DEFAULT_IMAGE_POLICY.resize)};
+                recipe: options.recipe ? validateImageRecipe(options.recipe) : undefined,
+                resize: validateResize(options.recipe?.resize ?? options.resize ?? DEFAULT_IMAGE_POLICY.resize)};
             if (captured.purpose !== undefined && !['preview', 'export'].includes(captured.purpose)) throw new ImageProcessingError('invalid-policy');
             return schedule(() => processImage(source, spec, captured, assertOpen));
         },

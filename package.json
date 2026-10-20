@@ -1,6 +1,6 @@
 {
   "name": "@itookit/image-parser",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Browser image resize, crop, perspective correction and native DOM multi-image editor",
   "type": "module",
   "main": "./src/index.ts",
@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./ui": "./src/ui.ts",
     "./vfs": "./src/vfs.ts",
-    "./style.css": "./src/style.css"
+    "./style.css": "./src/style.css",
+    "./processing": "./src/processing.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -32,7 +33,12 @@
         "import": "./dist/vfs.js",
         "require": "./dist/vfs.cjs"
       },
-      "./style.css": "./dist/style.css"
+      "./style.css": "./dist/style.css",
+      "./processing": {
+        "types": "./dist/processing.d.ts",
+        "import": "./dist/processing.js",
+        "require": "./dist/processing.cjs"
+      }
     }
   },
   "files": [

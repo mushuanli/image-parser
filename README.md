@@ -91,3 +91,10 @@ On the fixed 68-case development dataset, the repaired detector passed 66 cases:
 The optional manifest in `IMAGE_PARSER_INPUT_URL` adds local photo fixtures: `images[]` entries contain ID, served URL, decoded dimensions, normalized clockwise points and expected complete/partial/abstain. Explicitly run `node scripts/fetch-paper-validation-dataset.mjs <directory> <served-path>` to download the pinned upstream set. It never runs during installation or ordinary tests. Upstream labels are ML-assisted and marked reviewed, not independently relabeled by this project; audit inference uses no ML.
 
 Use `IMAGE_PARSER_CPU_RATE=4 IMAGE_PARSER_MOBILE=1` for a sequential Chromium stress run. CPU/viewport emulation does not establish Safari or phone-device compatibility. `IMAGE_PARSER_BROWSER_FIXTURE=examples/paper-runtime.html pnpm test:browser` exercises the opt-in public API and partial editor behavior independently.
+
+
+## Portable output recipes
+
+`ProcessOptions.recipe` accepts a version-one `ImageRecipe`: resize policy, preserve/grayscale/threshold color, optional threshold (0–255), and output MIME/quality/minQuality/maxBytes. `@itookit/image-parser/processing` exports the pure contract, validator and bounded quality schedule for host adapters without loading Canvas or Scanic. Recipes always render from the immutable original; they encode at most five quality levels from the same final pixels and reject an unmet byte budget without shrinking further. PNG uses a single encode. Recipe resize overrides the legacy resize option. Browser and native adapters record their own versions; their encoded bytes need not match.
+
+Run `IMAGE_PARSER_BROWSER_FIXTURE=examples/processing.html pnpm test:browser` for real grayscale, threshold, output-budget and original-preservation checks.

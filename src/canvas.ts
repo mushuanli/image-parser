@@ -37,9 +37,9 @@ async function decodeElement(blob: Blob, signal: AbortSignal): Promise<DecodedIm
         return {image, width: image.naturalWidth, height: image.naturalHeight, close: () => {image.src = '';}};
     } finally {URL.revokeObjectURL(url);}
 }
-export async function encode(value: HTMLCanvasElement, mimeType: string, signal: AbortSignal): Promise<Blob> {
+export async function encode(value: HTMLCanvasElement, mimeType: string, signal: AbortSignal, quality = 0.92): Promise<Blob> {
     check(signal);
-    const blob = await new Promise<Blob | null>(resolve => value.toBlob(resolve, mimeType, 0.92));
+    const blob = await new Promise<Blob | null>(resolve => value.toBlob(resolve, mimeType, quality));
     check(signal);
     if (!blob || blob.type !== mimeType) throw new ImageProcessingError('encode-failed');
     return blob;
